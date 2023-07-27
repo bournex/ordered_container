@@ -1,4 +1,4 @@
-package orderedmap
+package ordered_container
 
 import (
 	"encoding/json"
