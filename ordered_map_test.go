@@ -166,266 +166,129 @@ func Test_OrderedArray(t *testing.T) {
 	}
 }
 
-// func Test_Marshal(t *testing.T) {
-// 	testCases := []struct {
-// 		name   string
-// 		input  OrderedMap
-// 		expect string
-// 	}{
-// 		{
-// 			name: "基本正序场景",
-// 			input: OrderedMap{
-// 				Values: []OrderedValue{
-// 					{
-// 						Key:   "a",
-// 						Value: 1,
-// 					},
-// 					{
-// 						Key:   "b",
-// 						Value: 2,
-// 					},
-// 					{
-// 						Key:   "c",
-// 						Value: 3,
-// 					},
-// 				},
-// 			},
-// 			expect: `{"a":1,"b":2,"c":3}`,
-// 		},
-// 		{
-// 			name: "基本逆序场景",
-// 			input: OrderedMap{
-// 				Values: []OrderedValue{
-// 					{
-// 						Key:   "c",
-// 						Value: 3,
-// 					},
-// 					{
-// 						Key:   "b",
-// 						Value: 2,
-// 					},
-// 					{
-// 						Key:   "a",
-// 						Value: 1,
-// 					},
-// 				},
-// 			},
-// 			expect: `{"c":3,"b":2,"a":1}`,
-// 		},
-// 		{
-// 			name: "嵌套map逆序场景",
-// 			input: OrderedMap{
-// 				Values: []OrderedValue{
-// 					{
-// 						Key:   "c",
-// 						Value: 3,
-// 					},
-// 					{
-// 						Key: "b",
-// 						Value: OrderedMap{
-// 							Values: []OrderedValue{
-// 								{
-// 									Key:   "y",
-// 									Value: "*",
-// 								},
-// 								{
-// 									Key:   "z",
-// 									Value: "#",
-// 								},
-// 								{
-// 									Key:   "x",
-// 									Value: "$",
-// 								},
-// 							},
-// 						},
-// 					},
-// 					{
-// 						Key:   "a",
-// 						Value: 1,
-// 					},
-// 				},
-// 			},
-// 			expect: `{"c":3,"b":{"y":"*","z":"#","x":"$"},"a":1}`,
-// 		},
-// 	}
-// 	for _, v := range testCases {
-// 		t.Run(v.name, func(t *testing.T) {
-// 			got, err := json.Marshal(v.input)
-// 			if err != nil {
-// 				t.Errorf("marshal failed: \n\tin: %+v\n\tex: %+v\n\terr: %+v", v.input, v.expect, err)
-// 				return
-// 			}
+func Test_Mix(t *testing.T) {
+	const (
+		RootIsObject = 1
+		RootIsArray  = 2
+	)
 
-// 			if string(got) != v.expect {
-// 				t.Errorf("miss match: \n\tin: %+v\n\tex: %+v\n\tgot: %+v", v.input, v.expect, string(got))
-// 			}
-// 		})
-// 	}
-// }
+	testCases := []struct {
+		name     string
+		rootType int // RootIsObject/RootIsArray
+		input    string
+		expect   interface{}
+	}{
+		{
+			rootType: RootIsObject,
+			input:    `{"a":1,"b":[true,false],"c":3.14}`,
+			expect: OrderedMap{
+				Values: []OrderedValue{
+					{
+						Key:   "a",
+						Value: json.Number("1"),
+					},
+					{
+						Key: "b",
+						Value: OrderedArray{
+							true,
+							false,
+						},
+					},
+					{
+						Key:   "c",
+						Value: json.Number("3.14"),
+					},
+				},
+			},
+		},
+		{
+			rootType: RootIsArray,
+			input:    `[{"name":"alice","age":5},{"name":"bob","age":3}]`,
+			expect: OrderedArray{
+				OrderedMap{
+					Values: []OrderedValue{
+						{
+							Key:   "name",
+							Value: "alice",
+						},
+						{
+							Key:   "age",
+							Value: json.Number("5"),
+						},
+					},
+				},
+				OrderedMap{
+					Values: []OrderedValue{
+						{
+							Key:   "name",
+							Value: "bob",
+						},
+						{
+							Key:   "age",
+							Value: json.Number("3"),
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, v := range testCases {
+		t.Run(v.name, func(t *testing.T) {
+			if v.rootType == RootIsObject {
+				testObjectRoot(t, v.input, v.expect)
+			} else if v.rootType == RootIsArray {
+				testArrayRoot(t, v.input, v.expect)
+			}
+		})
+	}
+}
 
-// func Test_Unmarshal_Marshal(t *testing.T) {
-// 	testCases := []struct {
-// 		name   string
-// 		input  []byte
-// 		expect OrderedMap
-// 	}{
-// 		{
-// 			name:  "基本正序场景",
-// 			input: []byte(`{"a":1,"b":2,"c":3}`),
-// 			expect: OrderedMap{
-// 				Values: []OrderedValue{
-// 					{
-// 						Key:   "a",
-// 						Value: json.Number("1"),
-// 					},
-// 					{
-// 						Key:   "b",
-// 						Value: json.Number("2"),
-// 					},
-// 					{
-// 						Key:   "c",
-// 						Value: json.Number("3"),
-// 					},
-// 				},
-// 			},
-// 		},
-// 		{
-// 			name:  "基本逆序场景",
-// 			input: []byte(`{"c":3,"b":2,"a":1}`),
-// 			expect: OrderedMap{
-// 				Values: []OrderedValue{
-// 					{
-// 						Key:   "c",
-// 						Value: json.Number("3"),
-// 					},
-// 					{
-// 						Key:   "b",
-// 						Value: json.Number("2"),
-// 					},
-// 					{
-// 						Key:   "a",
-// 						Value: json.Number("1"),
-// 					},
-// 				},
-// 			},
-// 		},
-// 		{
-// 			name:  "嵌套object逆序场景",
-// 			input: []byte(`{"c":{"y":"*","z":"#","x":"$"},"b":2,"a":1}`),
-// 			expect: OrderedMap{
-// 				Values: []OrderedValue{
-// 					{
-// 						Key: "c",
-// 						Value: OrderedMap{
-// 							Values: []OrderedValue{
-// 								{
-// 									Key:   "y",
-// 									Value: "*",
-// 								},
-// 								{
-// 									Key:   "z",
-// 									Value: "#",
-// 								},
-// 								{
-// 									Key:   "x",
-// 									Value: "$",
-// 								},
-// 							},
-// 						},
-// 					},
-// 					{
-// 						Key:   "b",
-// 						Value: json.Number("2"),
-// 					},
-// 					{
-// 						Key:   "a",
-// 						Value: json.Number("1"),
-// 					},
-// 				},
-// 			},
-// 		},
-// 		{
-// 			name:  "嵌套array场景",
-// 			input: []byte(`{"c":["hello","world","hello","golang"],"b":2,"a":1}`),
-// 			expect: OrderedMap{
-// 				Values: []OrderedValue{
-// 					{
-// 						Key: "c",
-// 						Value: OrderedArray{
-// 							"hello",
-// 							"world",
-// 							"hello",
-// 							"golang",
-// 						},
-// 					},
-// 					{
-// 						Key:   "b",
-// 						Value: json.Number("2"),
-// 					},
-// 					{
-// 						Key:   "a",
-// 						Value: json.Number("1"),
-// 					},
-// 				},
-// 			},
-// 		},
-// 		{
-// 			name:  "嵌套array/object场景",
-// 			input: []byte(`{"c":[{"hello":"world"},{"hello":"golang"}],"b":2,"a":1}`),
-// 			expect: OrderedMap{
-// 				Values: []OrderedValue{
-// 					{
-// 						Key: "c",
-// 						Value: OrderedArray{
-// 							OrderedMap{
-// 								Values: []OrderedValue{
-// 									{
-// 										Key:   "hello",
-// 										Value: "world",
-// 									},
-// 								},
-// 							},
-// 							OrderedMap{
-// 								Values: []OrderedValue{
-// 									{
-// 										Key:   "hello",
-// 										Value: "golang",
-// 									},
-// 								},
-// 							},
-// 						},
-// 					},
-// 					{
-// 						Key:   "b",
-// 						Value: json.Number("2"),
-// 					},
-// 					{
-// 						Key:   "a",
-// 						Value: json.Number("1"),
-// 					},
-// 				},
-// 			},
-// 		},
-// 	}
-// 	for _, v := range testCases {
-// 		t.Run(v.name, func(t *testing.T) {
-// 			var got OrderedMap
-// 			err := json.Unmarshal([]byte(v.input), &got)
-// 			if err != nil {
-// 				t.Errorf("unmarshal failed: \n\tin: %+v\n\tex: %+v\n\terr: %+v", v.input, v.expect, err)
-// 				return
-// 			}
+func testObjectRoot(t *testing.T, input string, expect interface{}) {
+	var oa OrderedMap
+	err := json.Unmarshal([]byte(input), &oa)
+	if err != nil {
+		t.Errorf("unmarshal failed\n\tinput %+v\n\texpect %+v\n\terror %+v", input, expect, err)
+		return
+	}
 
-// 			if !reflect.DeepEqual(v.expect, got) {
-// 				t.Errorf("miss match: \n\tin: %+v\n\tex: %+v\n\tgot: %+v", v.input, v.expect, got)
-// 				return
-// 			}
+	if !reflect.DeepEqual(oa, expect) {
+		t.Errorf("miss match object\n\tinput %+v\n\texpect %+v\n\tgot %+v", input, expect, oa)
+		return
+	}
 
-// 			b, _ := got.MarshalJSON()
-// 			if !bytes.Equal(b, v.input) {
-// 				t.Errorf("miss match: \n\tin: %+v\n\tgot: %+v", string(v.input), string(b))
-// 				return
-// 			}
-// 		})
-// 	}
-// }
+	b, err := json.Marshal(oa)
+	if err != nil {
+		t.Errorf("unmarshal failed\n\tinput %+v\n\texpect %+v\n\terror %+v", input, expect, err)
+		return
+	}
+
+	if string(b) != input {
+		t.Errorf("miss match stream\n\tinput %+v\n\texpect %+v\n\tgot %+v", input, expect, oa)
+		return
+	}
+}
+
+func testArrayRoot(t *testing.T, input string, expect interface{}) {
+	var oa OrderedArray
+	err := json.Unmarshal([]byte(input), &oa)
+	if err != nil {
+		t.Errorf("unmarshal failed\n\tinput %+v\n\texpect %+v\n\terror %+v", input, expect, err)
+		return
+	}
+
+	if !reflect.DeepEqual(oa, expect) {
+		t.Errorf("miss match object\n\tinput %+v\n\texpect %+v\n\tgot %+v", input, expect, oa)
+		return
+	}
+
+	b, err := json.Marshal(oa)
+	if err != nil {
+		t.Errorf("unmarshal failed\n\tinput %+v\n\texpect %+v\n\terror %+v", input, expect, err)
+		return
+	}
+
+	if string(b) != input {
+		t.Errorf("miss match stream\n\tinput %+v\n\texpect %+v\n\tgot %+v", input, expect, oa)
+		return
+	}
+}

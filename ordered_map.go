@@ -7,6 +7,15 @@ import (
 	"io"
 )
 
+// json token类型
+//	Delim, for the four JSON delimiters [ ] { }
+//	bool, for JSON booleans
+//	float64, for JSON numbers
+//	Number, for JSON numbers
+//	string, for JSON string literals
+//	nil, for JSON null
+// OrderedContainer目标是保持顺序，因此只需要对[]、{}中的内容按照顺序序列化、反序列化，其他的字面量直接原样序列化即可
+
 var (
 	// change to false, if you don't need json.Number to represent Numbers
 	UseNumber bool = true
@@ -70,6 +79,7 @@ func (om *OrderedMap) UnmarshalJSON(b []byte) error {
 		return nil
 	}
 
+	// 识别是否为对象
 	if t != json.Delim('{') {
 		// log.Print("unexpected start of object")
 		return errors.New("unexpected start of object")
@@ -114,8 +124,9 @@ func (om *OrderedMap) unmarshalEmbededObject(d *json.Decoder) error {
 		om.Values = append(om.Values, OrderedValue{kToken.(string), val})
 	}
 
+	// 读取对象结束token '}'
 	kToken, err := d.Token()
-	if err == io.EOF || (kToken != json.Delim('}') && kToken != json.Delim(']')) {
+	if err == io.EOF || kToken != json.Delim('}') {
 		// log.Print("unexpected EOF")
 		return errors.New("unexpected EOF")
 	}
@@ -147,6 +158,7 @@ func (arr OrderedArray) MarshalJSON() ([]byte, error) {
 
 	return buf.Bytes(), nil
 }
+
 func (arr *OrderedArray) UnmarshalJSON(b []byte) error {
 	d := json.NewDecoder(bytes.NewReader(b))
 	if UseNumber {
@@ -158,8 +170,8 @@ func (arr *OrderedArray) UnmarshalJSON(b []byte) error {
 		return nil
 	}
 
+	// 识别是否为数组
 	if t != json.Delim('[') {
-		// log.Print("unexpected start of array")
 		return errors.New("unexpected start of array")
 	}
 	return arr.unmarshalEmbededArray(d)
@@ -186,7 +198,7 @@ func (om *OrderedArray) unmarshalEmbededArray(d *json.Decoder) error {
 			err = arr.unmarshalEmbededArray(d)
 			val = arr
 		default:
-			// 立即值
+			// 字面量 literial
 			val = token
 		}
 
@@ -197,9 +209,9 @@ func (om *OrderedArray) unmarshalEmbededArray(d *json.Decoder) error {
 		*om = append(*om, val)
 	}
 
+	// 读取数组结束token ']'
 	kToken, err := d.Token()
 	if err == io.EOF || kToken != json.Delim(']') {
-		// log.Print("unexpected EOF")
 		return errors.New("unexpected EOF")
 	}
 
